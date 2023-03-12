@@ -177,6 +177,14 @@ class T5ForMultimodalGeneration(T5ForConditionalGeneration):
             loss = loss_fct(lm_logits.view(-1, lm_logits.size(-1)), labels.view(-1))
             # TODO(thom): Add z_loss https://github.com/tensorflow/mesh/blob/fa19d69eafc9a482aff0b59ddd96b025c0cb207d/mesh_tensorflow/layers.py#L666
 
+            # if z_loss is nonzero, we add a loss equal to z_loss*log(z)^2, where z is the
+            # partition function.  Example value: z_loss=1e-4
+            if self.config.z_loss_factor > 0:
+                z = torch.exp(self.log_z)
+                z_loss = self.config.z_loss_factor * (z * torch.log(z)) ** 2
+                loss += z_loss
+            
+
         if not return_dict:
             output = (lm_logits,) + decoder_outputs[1:] + encoder_outputs
             return ((loss,) + output) if loss is not None else output
